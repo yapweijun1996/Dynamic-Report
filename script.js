@@ -142,6 +142,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (include) {
                     items.push(item);
                 }
+function renderReport(items, groupFields, metricFields) {
+        const grouped = {};
+
+        items.forEach(item => {
+            const key = groupFields.map(field => item[field]).join(' - ');
+            if (!grouped[key]) {
+                grouped[key] = {};
+                groupFields.forEach(field => {
+                    grouped[key][field] = item[field];
+                });
+                metricFields.forEach(field => {
+                    grouped[key][`sum_${field}`] = 0;
+                });
+                grouped[key].count = 0;
+            }
+            metricFields.forEach(field => {
+                grouped[key][`sum_${field}`] += item[field];
+            });
+            grouped[key].count++;
+        });
+
+        const output = document.getElementById('reportOutput');
+        if (Object.keys(grouped).length === 0) {
+            output.innerHTML = '<p>No data matches the selected criteria.</p>';
+            return;
+        }
+
+        let table = '<table><thead><tr>';
+        groupFields.forEach(field => table += `<th>${field}</th>`);
+        metricFields.forEach(field => table += `<th>SUM(${field})</th>`);
+        table += '<th>Count</th></tr></thead><tbody>';
+
+        for (const key in grouped) {
+            table += '<tr>';
+            groupFields.forEach(field => table += `<td>${grouped[key][field]}</td>`);
+            metricFields.forEach(field => table += `<td>${grouped[key][`sum_${field}`]}</td>`);
+            table += `<td>${grouped[key].count}</td>`;
+            table += '</tr>';
+        }
+
+        table += '</tbody></table>';
+        output.innerHTML = table;
+    }
                 cursor.continue();
             } else {
                 renderReport(items, groupFields, metricFields);
