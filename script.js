@@ -112,23 +112,56 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function generateReport() {
-        // Logic to be implemented
-        document.getElementById('reportOutput').innerHTML = '<p>Report generation logic not yet implemented.</p>';
+        const groupFields = Array.from(document.querySelectorAll('#groupZone .pill')).map(p => p.dataset.field);
+        const metricFields = Array.from(document.querySelectorAll('#metricZone .pill')).map(p => p.dataset.field);
+
+        if (groupFields.length === 0 || metricFields.length === 0) {
+            document.getElementById('reportOutput').innerHTML = '<p>Please select at least one grouping and one metric field.</p>';
+            return;
+        }
+
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const region = document.getElementById('regionFilter').value;
+        const minAmount = parseFloat(document.getElementById('minAmount').value) || 0;
+
+        const transaction = db.transaction(['sales'], 'readonly');
+        const objectStore = transaction.objectStore('sales');
+        const items = [];
+
+        objectStore.openCursor().onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (cursor) {
+                const item = cursor.value;
+                let include = true;
+                if (startDate && item.date < startDate) include = false;
+                if (endDate && item.date > endDate) include = false;
+                if (region && item.region !== region) include = false;
+                if (item.amount < minAmount) include = false;
+
+                if (include) {
+                    items.push(item);
+                }
+                cursor.continue();
+            } else {
+                renderReport(items, groupFields, metricFields);
+            }
+        };
     }
 
--   function resetConfiguration() {
--       document.getElementById('groupZone').innerHTML = '';
--       document.getElementById('metricZone').innerHTML = '';
--       document.getElementById('startDate').value = '';
--       document.getElementById('endDate').value = '';
--       document.getElementById('regionFilter').value = '';
--       document.getElementById('minAmount').value = '';
--       document.getElementById('reportOutput').innerHTML = '';
--       document.getElementById('testResults').innerHTML = '';
--   }
--
--   function runSelfTest() {
--       // Logic to be implemented
--       document.getElementById('testResults').innerHTML = '<p>Self-test logic not yet implemented.</p>';
--   }
+    function resetConfiguration() {
+        document.getElementById('groupZone').innerHTML = '';
+        document.getElementById('metricZone').innerHTML = '';
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+        document.getElementById('regionFilter').value = '';
+        document.getElementById('minAmount').value = '';
+        document.getElementById('reportOutput').innerHTML = '';
+        document.getElementById('testResults').innerHTML = '';
+    }
+
+    function runSelfTest() {
+        // Logic to be implemented
+        document.getElementById('testResults').innerHTML = '<p>Self-test logic not yet implemented.</p>';
+    }
 });
