@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Report Demo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Dynamic Report Demo <span class="badge">IndexedDB + JS</span></h1>
+    </header>
+    <div class="container">
+        <aside class="card">
+            <h2>Fields</h2>
+            <div id="fieldList">
+                <div class="pill" draggable="true" data-field="date">Date</div>
+                <div class="pill" draggable="true" data-field="region">Region</div>
+                <div class="pill" draggable="true" data-field="salesperson">Salesperson</div>
+                <div class="pill" draggable="true" data-field="amount">Amount</div>
+            </div>
+            <h3 class="zone-title">Grouping Fields</h3>
+            <div id="groupZone" class="drop-zone"></div>
+            <h3 class="zone-title">Metric Fields</h3>
+            <div id="metricZone" class="drop-zone"></div>
+        </aside>
+        <main class="card">
+            <h2>Report Configuration</h2>
+            <div class="filters">
+                <input type="date" id="startDate" placeholder="Start Date">
+                <input type="date" id="endDate" placeholder="End Date">
+                <select id="regionFilter">
+                    <option value="">All Regions</option>
+                </select>
+                <input type="number" id="minAmount" placeholder="Min Amount">
+            </div>
+            <div class="toolbar">
+                <button id="generateBtn">Generate Report</button>
+                <button id="resetBtn">Reset</button>
+                <button id="selfTestBtn">Run Self-Test</button>
+            </div>
+            <div id="testResults"></div>
+            <div id="reportOutput"></div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
