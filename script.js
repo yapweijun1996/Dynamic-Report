@@ -204,7 +204,43 @@ function renderReport(items, groupFields, metricFields) {
     }
 
     function runSelfTest() {
-        // Logic to be implemented
-        document.getElementById('testResults').innerHTML = '<p>Self-test logic not yet implemented.</p>';
+        const results = [];
+        const testResultsEl = document.getElementById('testResults');
+        testResultsEl.innerHTML = 'Running tests...';
+
+        const tests = [
+            () => new Promise((resolve) => {
+                const transaction = db.transaction(['sales'], 'readonly');
+                const objectStore = transaction.objectStore('sales');
+                const countRequest = objectStore.count();
+                countRequest.onsuccess = () => {
+                    results.push(countRequest.result > 0 ? 'PASS: Initial data loaded.' : 'FAIL: Initial data not loaded.');
+                    resolve();
+                };
+                countRequest.onerror = () => {
+                    results.push('FAIL: Could not count data.');
+                    resolve();
+                };
+            }),
+            () => new Promise((resolve) => {
+                const transaction = db.transaction(['sales'], 'readonly');
+                const objectStore = transaction.objectStore('sales');
+                const request = objectStore.getAll();
+                request.onsuccess = () => {
+                    const items = request.result;
+                    const filtered = items.filter(i => i.region === 'North');
+                    results.push(filtered.length === 2 ? 'PASS: Region filtering works.' : 'FAIL: Region filtering failed.');
+                    resolve();
+                };
+                request.onerror = () => {
+                    results.push('FAIL: Could not get all data for filtering test.');
+                    resolve();
+                };
+            }),
+        ];
+
+        Promise.all(tests.map(test => test())).then(() => {
+            testResultsEl.innerHTML = results.map(r => `<div>${r}</div>`).join('');
+        });
     }
 });
