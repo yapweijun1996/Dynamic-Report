@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         populateInitialData();
         setupDragAndDrop();
         setupEventListeners();
+        setupAutoGenerate();
     };
 
     function populateInitialData() {
@@ -101,6 +102,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (pill && !zone.contains(pill)) {
                     zone.appendChild(pill.cloneNode(true));
                 }
+            });
+        });
+    }
+
+    function setupAutoGenerate() {
+        const reportInputs = document.querySelectorAll('.filters input, .filters select');
+        reportInputs.forEach(input => {
+            input.addEventListener('change', generateReport);
+        });
+
+        const dropZones = document.querySelectorAll('.drop-zone');
+        dropZones.forEach(zone => {
+            zone.addEventListener('drop', () => {
+                setTimeout(generateReport, 0);
             });
         });
     }
