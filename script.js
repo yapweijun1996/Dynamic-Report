@@ -2,7 +2,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const dbName = 'DynamicReportDB';
     let db;
 
-    const request = indexedDB.open(dbName, 1);
+    const availableFields = [
+        { id: 'date', name: 'Date', type: 'group' },
+        { id: 'region', name: 'Region', type: 'group' },
+        { id: 'salesperson', name: 'Salesperson', type: 'group' },
+        { id: 'documentType', name: 'Document Type', type: 'group' },
+        { id: 'documentId', name: 'Document ID', type: 'group' },
+        { id: 'amount', name: 'Amount', type: 'metric' }
+    ];
+
+    const request = indexedDB.open(dbName, 2);
 
     request.onerror = (event) => {
         console.error('Database error:', event.target.errorCode);
@@ -10,17 +19,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     request.onupgradeneeded = (event) => {
         db = event.target.result;
-        const objectStore = db.createObjectStore('sales', { keyPath: 'id', autoIncrement: true });
-        objectStore.createIndex('date', 'date', { unique: false });
-        objectStore.createIndex('region', 'region', { unique: false });
-        objectStore.createIndex('salesperson', 'salesperson', { unique: false });
-        objectStore.createIndex('amount', 'amount', { unique: false });
+        let objectStore;
+        if (!db.objectStoreNames.contains('sales')) {
+            objectStore = db.createObjectStore('sales', { keyPath: 'id', autoIncrement: true });
+        } else {
+            objectStore = event.target.transaction.objectStore('sales');
+        }
+
+        if (!objectStore.indexNames.contains('date')) {
+            objectStore.createIndex('date', 'date', { unique: false });
+        }
+        if (!objectStore.indexNames.contains('region')) {
+            objectStore.createIndex('region', 'region', { unique: false });
+        }
+        if (!objectStore.indexNames.contains('salesperson')) {
+            objectStore.createIndex('salesperson', 'salesperson', { unique: false });
+        }
+        if (!objectStore.indexNames.contains('amount')) {
+            objectStore.createIndex('amount', 'amount', { unique: false });
+        }
+        if (!objectStore.indexNames.contains('documentType')) {
+            objectStore.createIndex('documentType', 'documentType', { unique: false });
+        }
+        if (!objectStore.indexNames.contains('documentId')) {
+            objectStore.createIndex('documentId', 'documentId', { unique: false });
+        }
     };
 
     request.onsuccess = (event) => {
         db = event.target.result;
         populateInitialData();
-        setupDragAndDrop();
+        setupFieldList();
         setupEventListeners();
         setupAutoGenerate();
     };
@@ -32,14 +61,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         countRequest.onsuccess = () => {
             if (countRequest.result === 0) {
-                const salesData = [
-                    { date: '2023-01-05', region: 'North', salesperson: 'Alice', amount: 1500 },
-                    { date: '2023-01-08', region: 'South', salesperson: 'Bob', amount: 2500 },
-                    { date: '2023-01-12', region: 'North', salesperson: 'Alice', amount: 1200 },
-                    { date: '2023-01-15', region: 'East', salesperson: 'Charlie', amount: 3200 },
-                    { date: '2023-02-02', region: 'West', salesperson: 'David', amount: 2200 },
-                    { date: '2023-02-05', region: 'South', salesperson: 'Bob', amount: 1800 },
-                ];
+                const salesData = [];
+                const docTypes = ['INV', 'QUO', 'DO', 'PO'];
+                const regions = ['North', 'South', 'East', 'West'];
+                const salespersons = ['Alice', 'Bob', 'Charlie', 'David', 'Eve'];
+                for (let i = 0; i < 200; i++) {
+                    salesData.push({
+                        date: `2023-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`,
+                        region: regions[Math.floor(Math.random() * regions.length)],
+                        salesperson: salespersons[Math.floor(Math.random() * salespersons.length)],
+                        documentType: docTypes[Math.floor(Math.random() * docTypes.length)],
+                        documentId: `${docTypes[Math.floor(Math.random() * docTypes.length)]}-${1000 + i}`,
+                        amount: Math.floor(Math.random() * 5000) + 100,
+                    });
+                }
                 salesData.forEach(item => objectStore.add(item));
             }
             populateRegionFilter();
@@ -69,41 +104,53 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    function setupDragAndDrop() {
-        const pills = document.querySelectorAll('.pill');
-        const dropZones = document.querySelectorAll('.drop-zone');
-
-        pills.forEach(pill => {
-            pill.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('text/plain', e.target.dataset.field);
-                e.target.style.opacity = '0.5';
-            });
-
-            pill.addEventListener('dragend', (e) => {
-                e.target.style.opacity = '1';
-            });
+    function setupFieldList() {
+        const container = document.getElementById('field-list-container');
+        availableFields.forEach(field => {
+            const item = document.createElement('div');
+            item.className = 'field-item';
+            item.innerHTML = `
+                <span>${field.name}</span>
+                <div class="field-actions">
+                    <button onclick="addField('groupZone', '${field.id}', '${field.name}')">Group</button>
+                    <button onclick="addField('metricZone', '${field.id}', '${field.name}')">Metric</button>
+                </div>
+            `;
+            container.appendChild(item);
         });
+    }
 
-        dropZones.forEach(zone => {
-            zone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                zone.classList.add('over');
-            });
+    window.addField = function(zoneId, field, text) {
+        const zone = document.getElementById(zoneId);
+        if (field && !zone.querySelector(`[data-field="${field}"]`)) {
+            const pill = createPill(field, text);
+            zone.appendChild(pill);
+            generateReport();
+        }
+    }
 
-            zone.addEventListener('dragleave', () => {
-                zone.classList.remove('over');
-            });
+    function createPill(field, text) {
+        const pill = document.createElement('div');
+        pill.className = 'pill';
+        pill.dataset.field = field;
+        pill.textContent = text;
 
-            zone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                zone.classList.remove('over');
-                const field = e.dataTransfer.getData('text/plain');
-                const pill = document.querySelector(`.pill[data-field="${field}"]`);
-                if (pill && !zone.contains(pill)) {
-                    zone.appendChild(pill.cloneNode(true));
-                }
-            });
-        });
+        const removeBtn = document.createElement('span');
+        removeBtn.className = 'remove-btn';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.onclick = () => {
+            pill.remove();
+            generateReport();
+        };
+
+        pill.appendChild(removeBtn);
+        return pill;
+    }
+
+    function setupEventListeners() {
+        document.getElementById('generateBtn').addEventListener('click', generateReport);
+        document.getElementById('resetBtn').addEventListener('click', resetConfiguration);
+        document.getElementById('selfTestBtn').addEventListener('click', runSelfTest);
     }
 
     function setupAutoGenerate() {
@@ -111,19 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
         reportInputs.forEach(input => {
             input.addEventListener('change', generateReport);
         });
-
-        const dropZones = document.querySelectorAll('.drop-zone');
-        dropZones.forEach(zone => {
-            zone.addEventListener('drop', () => {
-                setTimeout(generateReport, 0);
-            });
-        });
-    }
-
-    function setupEventListeners() {
-        document.getElementById('generateBtn').addEventListener('click', generateReport);
-        document.getElementById('resetBtn').addEventListener('click', resetConfiguration);
-        document.getElementById('selfTestBtn').addEventListener('click', runSelfTest);
     }
 
     function renderReport(items, groupFields, metricFields) {
@@ -142,7 +176,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 grouped[key].count = 0;
             }
             metricFields.forEach(field => {
-                grouped[key][`sum_${field}`] += item[field];
+                if (typeof item[field] === 'number') {
+                    grouped[key][`sum_${field}`] += item[field];
+                }
             });
             grouped[key].count++;
         });
